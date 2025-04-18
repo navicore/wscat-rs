@@ -1239,13 +1239,14 @@ dependencies = [
 
 [[package]]
 name = "wscat-rs"
-version = "0.9.2"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
  "atty",
  "clap",
  "futures",
+ "http",
  "native-tls",
  "predicates",
  "tokio",
