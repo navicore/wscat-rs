@@ -13,6 +13,8 @@ use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async_tls_with_config, Connector};
 
+pub mod slash;
+
 /// wscat‑style client with `wss://` support, `--insecure`,
 /// optional slash-commands, and TTY‑aware prefixes.
 #[derive(Parser)]
