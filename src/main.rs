@@ -57,19 +57,16 @@ async fn main() -> Result<()> {
     let (ws_stream, _) = connect_async_tls_with_config(request, None, false, tls_connector).await?;
     let (mut sink, mut stream) = ws_stream.split();
 
-    // Task: stdin → WebSocket, with optional slash-commands
     let stdin_task = tokio::spawn(async move {
         let mut lines = io::BufReader::new(io::stdin()).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            if slash && line.starts_with('/') {
-                match parse_slash_command(&line) {
-                    Some(msg) => {
-                        let _ = sink.send(msg).await;
-                    }
-                    None => {
-                        let _ = sink.send(Message::Text(line.clone().into())).await;
-                    }
-                }
+            let msg = if slash && line.starts_with('/') {
+                parse_slash_command(&line).unwrap_or_else(|| Message::Text(line.clone().into()))
+            } else {
+                Message::Text(line.into())
+            };
+            if sink.send(msg).await.is_err() {
+                break;
             }
         }
     });
