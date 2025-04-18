@@ -2,7 +2,7 @@ use anyhow::Result;
 use atty::Stream;
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
-use http::header::{HeaderName, HeaderValue};
+use http::header::{HeaderName, HeaderValue, SEC_WEBSOCKET_PROTOCOL};
 use native_tls::TlsConnector;
 use slash::parse_slash_command;
 use tokio::io;
@@ -13,8 +13,10 @@ use tokio_tungstenite::{connect_async_tls_with_config, Connector};
 
 pub mod slash;
 
+const KNOWN_PROTOCOLS: &[&str] = &["graphql-ws", "mqtt", "wamp"];
+
 /// wscat‑style client with `wss://` support, `--insecure`,
-/// optional slash-commands, and TTY‑aware prefixes.
+/// optional slash-commands, TTY‑aware prefixes, custom headers, subprotocol, verbose output, and dry-run mode.
 #[derive(Parser)]
 #[allow(clippy::struct_excessive_bools)]
 struct Opt {
@@ -33,6 +35,10 @@ struct Opt {
     /// Custom headers to send with the WebSocket handshake
     #[clap(long = "header", value_parser = parse_key_val::<String, String>, number_of_values = 1)]
     headers: Vec<(String, String)>,
+
+    /// WebSocket subprotocol(s) (Sec-WebSocket-Protocol)
+    #[clap(long = "protocol", number_of_values = 1)]
+    protocols: Vec<String>,
 
     /// Print request info before connecting
     #[clap(long)]
@@ -69,6 +75,7 @@ async fn main() -> Result<()> {
         insecure,
         slash,
         headers,
+        protocols,
         verbose,
         dry_run,
     } = Opt::parse();
@@ -80,6 +87,22 @@ async fn main() -> Result<()> {
         let name = HeaderName::from_bytes(k.as_bytes())?;
         let value = HeaderValue::from_str(v)?;
         request.headers_mut().append(name, value);
+    }
+
+    if !protocols.is_empty() {
+        // Validate protocols
+        for proto in &protocols {
+            if !KNOWN_PROTOCOLS.contains(&proto.as_str()) {
+                eprintln!(
+                    "Warning: unknown protocol passed to --protocol arg. Known: {:?}",
+                    KNOWN_PROTOCOLS
+                );
+            }
+        }
+        let joined = protocols.join(", ");
+        request
+            .headers_mut()
+            .insert(SEC_WEBSOCKET_PROTOCOL, HeaderValue::from_str(&joined)?);
     }
 
     if verbose || dry_run {
