@@ -11,7 +11,7 @@ repository = "https://github.com/navicore/wscat-rs"
 
 [dependencies]
 tokio             = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.18", features = ["native-tls", "connect"] }
+tokio-tungstenite = { version = "0.26", features = ["native-tls", "connect"] }
 native-tls        = "0.2"
 clap              = { version = "4", features = ["derive"] }
 futures           = "0.3"
