@@ -2,12 +2,18 @@
 name = "wscat-rs"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+authors = ["Ed Sweeney <ed@onextent.com>"]
+description = "A cli tool for tailing wss websocket streams"
+keywords = ["ws", "websocket", "wss"]
+documentation = "https://docs.rs/wscat-rs"
+repository = "https://github.com/navicore/wscat-rs"
 
 [dependencies]
-clap = {version= "4.5.36", features = ["derive"]}
-tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "*" }
-futures = { version = "*" }
-tungstenite = { version = "*" }
-anyhow = { version = "*" }
-
+tokio             = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.18", features = ["native-tls", "connect"] }
+native-tls        = "0.2"
+clap              = { version = "4", features = ["derive"] }
+futures           = "0.3"
+anyhow            = "1.0"
+atty              = "0.2"

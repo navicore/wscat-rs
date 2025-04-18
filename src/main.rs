@@ -1,49 +1,94 @@
+use anyhow::Result;
+use atty::Stream;
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
-use tokio::io::{self, AsyncBufReadExt};
-use tokio_tungstenite::connect_async;
-use tungstenite::Message;
-/// a rust re-imlementation of a simple WebSocket client https://github.com/websockets/wscat
+use native_tls::TlsConnector;
+use tokio::io::AsyncBufReadExt;
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{connect_async_tls_with_config, Connector};
+
+/// wscat‑style client with `wss://` support and `--insecure`.
 #[derive(Parser)]
 struct Opt {
-    /// Connect to this WebSocket URL
+    /// WebSocket URL to connect (ws:// or wss://)
     #[clap(short, long)]
     connect: String,
-    /// Don’t print colors
+
+    /// Skip TLS certificate validation
     #[clap(long)]
-    no_color: bool,
-    // … add more flags as needed …
+    insecure: bool,
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let Opt {
-        connect,
-        no_color: _,
-    } = Opt::parse();
+async fn main() -> Result<()> {
+    let Opt { connect, insecure } = Opt::parse();
 
-    // Establish WebSocket connection
-    let (ws_stream, _) = connect_async(&connect).await?;
-    let (mut write, mut read) = ws_stream.split();
+    // Turn the URL string into a Request
+    let request = connect.into_client_request()?;
 
-    // Task: read from stdin and send to socket
+    // Build the native_tls connector
+    let mut builder = TlsConnector::builder();
+    if insecure {
+        builder.danger_accept_invalid_certs(true);
+    }
+    let native_conn = builder.build()?;
+
+    // Wrap it in tokio-tungstenite's Connector enum
+    let tls_connector = Some(Connector::NativeTls(native_conn));
+
+    // Detect if stdout is a TTY for prefixing
+    let prefix_enabled = atty::is(Stream::Stdout);
+
+    // Dial out, using TLS if scheme == wss://
+    let (ws_stream, _) = connect_async_tls_with_config(request, None, tls_connector).await?;
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    let (mut sink, mut stream) = ws_stream.split();
+
+    // Task: stdin → WebSocket
     let stdin_task = tokio::spawn(async move {
-        let mut lines = io::BufReader::new(io::stdin()).lines();
+        let mut lines = tokio::io::BufReader::new(tokio::io::stdin()).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            write.send(Message::Text(line.into())).await.ok();
-        }
-    });
-
-    // Task: read from socket and print to stdout
-    let socket_task = tokio::spawn(async move {
-        while let Some(Ok(msg)) = read.next().await {
-            if let Message::Text(txt) = msg {
-                println!("< {}", txt);
+            if sink.send(Message::Text(line)).await.is_err() {
+                break;
             }
         }
     });
 
-    // Await both (will exit when either ends)
+    // Task: WebSocket → stdout
+    let socket_task = tokio::spawn(async move {
+        while let Some(Ok(msg)) = stream.next().await {
+            match msg {
+                Message::Text(t) => {
+                    if prefix_enabled {
+                        println!("< {}", t);
+                    } else {
+                        println!("{}", t);
+                    }
+                }
+                Message::Binary(b) => {
+                    if prefix_enabled {
+                        println!("< [binary: {} bytes]", b.len());
+                    } else {
+                        // print raw bytes as string fallback
+                        println!("{}", String::from_utf8_lossy(&b));
+                    }
+                }
+                Message::Close(c) => {
+                    if prefix_enabled {
+                        println!("< closed: {:?}", c);
+                    } else {
+                        eprintln!("closed: {:?}", c);
+                    }
+                    break;
+                }
+                _ => {}
+            }
+        }
+    });
+
+    // Wait for either side to finish
     let _ = tokio::try_join!(stdin_task, socket_task)?;
     Ok(())
 }
