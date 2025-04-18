@@ -94,8 +94,8 @@ async fn main() -> Result<()> {
         for proto in &protocols {
             if !KNOWN_PROTOCOLS.contains(&proto.as_str()) {
                 eprintln!(
-                    "Warning: unknown protocol '{}'. Known: {:?}",
-                    proto, KNOWN_PROTOCOLS
+                    "Warning: unknown protocol passed to --protocol arg. Known: {:?}",
+                    KNOWN_PROTOCOLS
                 );
             }
         }
