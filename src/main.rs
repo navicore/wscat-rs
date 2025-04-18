@@ -2,6 +2,7 @@ use anyhow::Result;
 use atty::Stream;
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
+use http::header::{HeaderName, HeaderValue};
 use native_tls::TlsConnector;
 use slash::parse_slash_command;
 use tokio::io;
@@ -27,6 +28,37 @@ struct Opt {
     /// Enable slash commands (/ping, /pong, /close)
     #[clap(long)]
     slash: bool,
+
+    /// Custom headers to send with the WebSocket handshake
+    #[clap(long = "header", value_parser = parse_key_val::<String, String>, number_of_values = 1)]
+    headers: Vec<(String, String)>,
+
+    /// Print request info before connecting
+    #[clap(long)]
+    verbose: bool,
+
+    /// Print request and exit without connecting
+    #[clap(long)]
+    dry_run: bool,
+}
+
+fn parse_key_val<K, V>(s: &str) -> Result<(K, V), String>
+where
+    K: std::str::FromStr,
+    V: std::str::FromStr,
+    K::Err: ToString,
+    V::Err: ToString,
+{
+    let pos = s
+        .find(':')
+        .ok_or_else(|| "invalid KEY:VALUE format".to_string())?;
+    let key = s[..pos].trim().parse().map_err(|e: K::Err| e.to_string())?;
+    let value = s[pos + 1..]
+        .trim()
+        .parse()
+        .map_err(|e: V::Err| e.to_string())?;
+
+    Ok((key, value))
 }
 
 #[tokio::main]
@@ -35,11 +67,32 @@ async fn main() -> Result<()> {
         connect,
         insecure,
         slash,
+        headers,
+        verbose,
+        dry_run,
     } = Opt::parse();
 
     // Convert URL string into a WebSocket request
-    let request = connect.into_client_request()?;
+    let mut request = connect.into_client_request()?;
 
+    for (k, v) in &headers {
+        let name = HeaderName::from_bytes(k.as_bytes())?;
+        let value = HeaderValue::from_str(v)?;
+        request.headers_mut().append(name, value);
+    }
+
+    if verbose || dry_run {
+        println!("Connecting to: {}", request.uri());
+        println!("Request Headers:");
+        for (name, value) in request.headers() {
+            println!("  {}: {}", name, value.to_str().unwrap_or("<invalid utf8>"));
+        }
+    }
+
+    if dry_run {
+        println!("Dry run enabled — exiting before connection.");
+        return Ok(());
+    }
     // Build the native-tls connector
     let mut builder = TlsConnector::builder();
     if insecure {
