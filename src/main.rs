@@ -16,6 +16,7 @@ pub mod slash;
 /// wscat‑style client with `wss://` support, `--insecure`,
 /// optional slash-commands, and TTY‑aware prefixes.
 #[derive(Parser)]
+#[allow(clippy::struct_excessive_bools)]
 struct Opt {
     /// WebSocket URL to connect (ws:// or wss://)
     #[clap(short, long)]
