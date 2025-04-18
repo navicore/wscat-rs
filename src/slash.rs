@@ -1,6 +1,7 @@
 use tokio_tungstenite::tungstenite::protocol::{frame::coding::CloseCode, CloseFrame};
 use tokio_tungstenite::tungstenite::Message;
 
+#[must_use]
 pub fn parse_slash_command(line: &str) -> Option<Message> {
     let mut parts = line.splitn(2, ' ');
     let cmd = parts.next()?;
