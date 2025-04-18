@@ -1073,7 +1073,7 @@ dependencies = [
 
 [[package]]
 name = "wscat-rs"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "anyhow",
  "atty",
