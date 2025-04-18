@@ -13,6 +13,8 @@ use tokio_tungstenite::{connect_async_tls_with_config, Connector};
 
 pub mod slash;
 
+const KNOWN_PROTOCOLS: &[&str] = &["graphql-ws", "mqtt", "wamp"];
+
 /// wscat‑style client with `wss://` support, `--insecure`,
 /// optional slash-commands, TTY‑aware prefixes, custom headers, subprotocol, verbose output, and dry-run mode.
 #[derive(Parser)]
@@ -34,9 +36,9 @@ struct Opt {
     #[clap(long = "header", value_parser = parse_key_val::<String, String>, number_of_values = 1)]
     headers: Vec<(String, String)>,
 
-    /// WebSocket subprotocol (Sec-WebSocket-Protocol)
-    #[clap(long)]
-    protocol: Option<String>,
+    /// WebSocket subprotocol(s) (Sec-WebSocket-Protocol)
+    #[clap(long = "protocol", number_of_values = 1)]
+    protocols: Vec<String>,
 
     /// Print request info before connecting
     #[clap(long)]
@@ -73,7 +75,7 @@ async fn main() -> Result<()> {
         insecure,
         slash,
         headers,
-        protocol,
+        protocols,
         verbose,
         dry_run,
     } = Opt::parse();
@@ -87,9 +89,20 @@ async fn main() -> Result<()> {
         request.headers_mut().append(name, value);
     }
 
-    if let Some(proto) = &protocol {
-        let value = HeaderValue::from_str(proto)?;
-        request.headers_mut().insert(SEC_WEBSOCKET_PROTOCOL, value);
+    if !protocols.is_empty() {
+        // Validate protocols
+        for proto in &protocols {
+            if !KNOWN_PROTOCOLS.contains(&proto.as_str()) {
+                eprintln!(
+                    "Warning: unknown protocol '{}'. Known: {:?}",
+                    proto, KNOWN_PROTOCOLS
+                );
+            }
+        }
+        let joined = protocols.join(", ");
+        request
+            .headers_mut()
+            .insert(SEC_WEBSOCKET_PROTOCOL, HeaderValue::from_str(&joined)?);
     }
 
     if verbose || dry_run {
