@@ -2,7 +2,7 @@ use anyhow::Result;
 use atty::Stream;
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
-use http::header::{HeaderName, HeaderValue};
+use http::header::{HeaderName, HeaderValue, SEC_WEBSOCKET_PROTOCOL};
 use native_tls::TlsConnector;
 use slash::parse_slash_command;
 use tokio::io;
@@ -14,7 +14,7 @@ use tokio_tungstenite::{connect_async_tls_with_config, Connector};
 pub mod slash;
 
 /// wscat‑style client with `wss://` support, `--insecure`,
-/// optional slash-commands, and TTY‑aware prefixes.
+/// optional slash-commands, TTY‑aware prefixes, custom headers, subprotocol, verbose output, and dry-run mode.
 #[derive(Parser)]
 #[allow(clippy::struct_excessive_bools)]
 struct Opt {
@@ -33,6 +33,10 @@ struct Opt {
     /// Custom headers to send with the WebSocket handshake
     #[clap(long = "header", value_parser = parse_key_val::<String, String>, number_of_values = 1)]
     headers: Vec<(String, String)>,
+
+    /// WebSocket subprotocol (Sec-WebSocket-Protocol)
+    #[clap(long)]
+    protocol: Option<String>,
 
     /// Print request info before connecting
     #[clap(long)]
@@ -69,6 +73,7 @@ async fn main() -> Result<()> {
         insecure,
         slash,
         headers,
+        protocol,
         verbose,
         dry_run,
     } = Opt::parse();
@@ -80,6 +85,11 @@ async fn main() -> Result<()> {
         let name = HeaderName::from_bytes(k.as_bytes())?;
         let value = HeaderValue::from_str(v)?;
         request.headers_mut().append(name, value);
+    }
+
+    if let Some(proto) = &protocol {
+        let value = HeaderValue::from_str(proto)?;
+        request.headers_mut().insert(SEC_WEBSOCKET_PROTOCOL, value);
     }
 
     if verbose || dry_run {
