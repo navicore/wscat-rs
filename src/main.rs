@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     let prefix_enabled = atty::is(Stream::Stdout);
 
     // Dial the WebSocket (uses TLS for wss://)
-    let (ws_stream, _) = connect_async_tls_with_config(request, None, tls_connector).await?;
+    let (ws_stream, _) = connect_async_tls_with_config(request, None, false, tls_connector).await?;
     let (mut sink, mut stream) = ws_stream.split();
 
     // Task: stdin → WebSocket, with optional slash-commands
@@ -72,10 +72,14 @@ async fn main() -> Result<()> {
                 let rest = parts.next().unwrap_or("");
                 match cmd {
                     "/ping" => {
-                        let _ = sink.send(Message::Ping(rest.as_bytes().to_vec())).await;
+                        let _ = sink
+                            .send(Message::Ping(rest.as_bytes().to_vec().into()))
+                            .await;
                     }
                     "/pong" => {
-                        let _ = sink.send(Message::Pong(rest.as_bytes().to_vec())).await;
+                        let _ = sink
+                            .send(Message::Pong(rest.as_bytes().to_vec().into()))
+                            .await;
                     }
                     "/close" => {
                         let mut sub = rest.splitn(2, ' ');
@@ -92,10 +96,10 @@ async fn main() -> Result<()> {
                     }
                     _ => {
                         // unknown slash, send raw text
-                        let _ = sink.send(Message::Text(line.clone())).await;
+                        let _ = sink.send(Message::Text(line.clone().into())).await;
                     }
                 }
-            } else if sink.send(Message::Text(line)).await.is_err() {
+            } else if sink.send(Message::Text(line.into())).await.is_err() {
                 break;
             }
         }
