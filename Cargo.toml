@@ -21,4 +21,4 @@ tokio-tungstenite = { version = "0.28", features = ["native-tls", "connect"] }
 
 [dev-dependencies]
 assert_cmd = "2.1"
-predicates = "3.0"
+predicates = "3.1"
