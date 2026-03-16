@@ -20,5 +20,5 @@ tokio             = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.28", features = ["native-tls", "connect"] }
 
 [dev-dependencies]
-assert_cmd = "2.1"
+assert_cmd = "2.2"
 predicates = "3.1"
