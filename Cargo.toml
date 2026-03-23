@@ -17,7 +17,7 @@ futures           = "0.3"
 http              = "1.4.0"
 native-tls        = "0.2"
 tokio             = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.28", features = ["native-tls", "connect"] }
+tokio-tungstenite = { version = "0.29", features = ["native-tls", "connect"] }
 
 [dev-dependencies]
 assert_cmd = "2.2"
