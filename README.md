@@ -1,3 +1,8 @@
+<!-- ghmig:moved -->
+> **This repository has moved to [https://git.navicore.tech/navicore/wscat-rs](https://git.navicore.tech/navicore/wscat-rs).**
+>
+> The GitHub copy is archived and no longer maintained.
+
 [![Publish-Crate](https://github.com/navicore/wscat-rs/actions/workflows/publish-crates.yml/badge.svg)](https://github.com/navicore/wscat-rs/actions/workflows/publish-crates.yml) [![Dependabot Updates](https://github.com/navicore/wscat-rs/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/navicore/wscat-rs/actions/workflows/dependabot/dependabot-updates) [![Rust](https://github.com/navicore/wscat-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/navicore/wscat-rs/actions/workflows/rust.yml) [![rust-clippy analyze](https://github.com/navicore/wscat-rs/actions/workflows/rust-clippy.yml/badge.svg)](https://github.com/navicore/wscat-rs/actions/workflows/rust-clippy.yml)
 
 wscat-rs
